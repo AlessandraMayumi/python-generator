@@ -1,7 +1,7 @@
 """ CSV FILE GENERATOR
 To generate test csv files within empty cells, call python functions
 
-generate_csv()
+generate_csv(lines)
 modify_empty_cells()
 """
 import uuid
@@ -9,7 +9,7 @@ import random
 import csv
 import pandas as pd
 
-FILENAME = 'data/mock_big_register.csv'
+FILENAME = '../data/mock_big_register.csv'
 
 
 def _add_headers():
@@ -21,7 +21,7 @@ def _add_headers():
 
 def _get_occupations():
     occupations = []
-    with open('util/occupations.csv') as csvfile:
+    with open('occupations.csv') as csvfile:
         reader = csv.DictReader(csvfile)
         for row in reader:
             occupations.append(row['Occupations'])
@@ -38,12 +38,16 @@ def _generate_line(professions):
     return f'{uuid.uuid4()}, {name}, {surname}, {email}, {email2}, {phone}, {profession}\n'
 
 
-def generate_csv():
+def generate_csv(lines):
+    """
+    Generate a test csv file specifying how many lines
+    :param lines: quantity of lines the csv should have
+    """
     _add_headers()
     occupation_list = _get_occupations()
 
     with open(FILENAME, 'a') as f:
-        for i in range(1000000):
+        for i in range(lines):
             line = _generate_line(occupation_list)
             f.write(line)
 
@@ -67,5 +71,5 @@ def modify_empty_cells():
     print(f'Test csv file generated: {FILENAME}')
 
 
-generate_csv()
+generate_csv(1000000)
 modify_empty_cells()
