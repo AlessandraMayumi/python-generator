@@ -61,7 +61,7 @@ def modify_empty_cells():
 
     for i in range(100):
         x = random.randrange(num_row)
-        y = random.randrange(1, num_col)
+        y = random.randrange(2, num_col)
         df.loc[x, df.columns[y]] = None
 
     empty = df.isna().sum()
@@ -71,5 +71,5 @@ def modify_empty_cells():
     print(f'Test csv file generated: {FILENAME}')
 
 
-generate_csv(1000000)
+generate_csv(100000)
 modify_empty_cells()

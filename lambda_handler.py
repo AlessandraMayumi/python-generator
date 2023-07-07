@@ -1,8 +1,27 @@
+import csv
 import io
 import boto3
 import pandas as pd
 
 from util.env import AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY
+
+
+def _get_csv_chunk(stream_body):
+    columns = []
+    pending = ''
+    for chunk in stream_body.iter_chunks(chunk_size=1000000):
+        decoded = pending + chunk.decode('utf-8')
+        rows_list_raw = decoded.splitlines()
+        if decoded[-1] != '\n':
+            pending = rows_list_raw[-1]
+            rows_list = rows_list_raw[0:-1]
+        else:
+            pending = ''
+            rows_list = rows_list_raw
+        if not columns:
+            columns = rows_list[0].split(',')
+            rows_list = rows_list[1::]
+        yield [row.split(',') for row in rows_list], columns
 
 
 def lambda_handler(event, context):
@@ -17,19 +36,16 @@ def lambda_handler(event, context):
                           )
 
     obj = client.get_object(Bucket=bucket, Key=object_key)
-    generator = obj['Body'].iter_lines()
+    stream_body = obj['Body']
 
-    headers = next(generator).decode('utf-8').split(',')
-    # initialize dictionary
-    empty_count = {}
-    for h in headers:
-        empty_count[h] = 0
-    # count empty cells
-    for line in generator:
-        row = line.decode('utf-8').split(',')
-        for idx, value in enumerate(row):
-            if not value:
-                empty_count[headers[idx]] += 1
+    empty_count = None
+    for rows, columns in _get_csv_chunk(stream_body):
+        df = pd.DataFrame(rows, columns=columns).replace('', None)
+        empty_count_chunk = df.isna().sum().to_dict()
+        if not empty_count:
+            empty_count = empty_count_chunk
+        for key in empty_count_chunk:
+            empty_count[key] += empty_count_chunk[key]
 
     print(f'Successfully count empty cells for each column: {empty_count}')
 
@@ -48,7 +64,7 @@ def config_event():
                         "name": "miazatobucket",
                     },
                     "object": {
-                        "key": "mock_empty_register.csv",
+                        "key": "mock_big_register.csv",
                     }
                 }
             }
