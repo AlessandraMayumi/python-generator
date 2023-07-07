@@ -17,11 +17,20 @@ def lambda_handler(event, context):
                           )
 
     obj = client.get_object(Bucket=bucket, Key=object_key)
-    body_bytes = obj['Body'].read()
-    body_io = io.BytesIO(body_bytes)
+    generator = obj['Body'].iter_lines()
 
-    df = pd.read_csv(body_io)
-    empty_count = df.isna().sum().to_json()
+    headers = next(generator).decode('utf-8').split(',')
+    # initialize dictionary
+    empty_count = {}
+    for h in headers:
+        empty_count[h] = 0
+    # count empty cells
+    for line in generator:
+        row = line.decode('utf-8').split(',')
+        for idx, value in enumerate(row):
+            if not value:
+                empty_count[headers[idx]] += 1
+
     print(f'Successfully count empty cells for each column: {empty_count}')
 
     return {
